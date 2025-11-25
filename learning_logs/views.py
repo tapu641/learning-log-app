@@ -65,3 +65,21 @@ def new_log(request):
     # ページを表示する
     context = {'form': form}
     return render(request, 'learning_logs/new_log.html', context)
+
+def edit_log(request, log_id):
+    """既存のログを編集する"""
+    # 編集したいデータをIDを使ってデータベースから探してくる
+    log = LearningLog.objects.get(id=log_id)
+
+    if request.method != 'POST':
+        # 初回表示：保存されているデータ(instance=log)が入ったフォームを作る
+        form = LearningLogForm(instance=log)
+    else:
+        # 送信時：送られてきたデータで上書き保存する
+        form = LearningLogForm(request.POST, instance=log)
+        if form.is_valid():
+            form.save()
+            return redirect('learning_logs:index')
+
+    context = {'log': log, 'form': form}
+    return render(request, 'learning_logs/edit_log.html', context)

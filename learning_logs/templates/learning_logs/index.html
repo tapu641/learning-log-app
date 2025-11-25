@@ -37,8 +37,13 @@
                 {% for log in logs %}
                     <li class="list-group-item">
                         <div class="d-flex justify-content-between">
-                            <small class="text-muted">{{ log.date|date:"m/d" }}</small>
-                            <span class="badge bg-secondary">{{ log.category }}</span>
+                            <div>
+                                <small class="text-muted">{{ log.date|date:"m/d" }}</small>
+                                <span class="badge bg-secondary">{{ log.category }}</span>
+                            </div>
+                            <a href="{% url 'learning_logs:edit_log' log.id %}" class="btn btn-sm btn-outline-success">
+                                編集
+                            </a>
                         </div>
                         <div class="mt-1">
                             {{ log.title }}
