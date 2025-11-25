@@ -1,8 +1,9 @@
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.db.models import Sum
 from django.utils import timezone
 import datetime
 from .models import Category, LearningLog
+from .forms import LearningLogForm
 
 def index(request):
     """学習ログのトップページを表示する"""
@@ -48,3 +49,19 @@ def index(request):
     }
     
     return render(request, 'learning_logs/index.html', context)
+
+def new_log(request):
+    """新しい学習ログを登録する"""
+    if request.method != 'POST':
+        # データが送信されていない時は、空のフォームを作る
+        form = LearningLogForm()
+    else:
+        # POSTでデータが届いた時は、中身を処理する
+        form = LearningLogForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('learning_logs:index') # 保存したらトップページに戻る
+
+    # ページを表示する
+    context = {'form': form}
+    return render(request, 'learning_logs/new_log.html', context)

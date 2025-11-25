@@ -1,91 +1,97 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <title>学習記録アプリ</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        /* 簡易レイアウト用CSS */
-        .chart-container {
-            display: flex; /* 横並びにする */
-            justify-content: space-around;
-            margin-bottom: 50px;
-        }
-        .chart-box {
-            width: 45%; /* グラフの幅 */
-        }
-    </style>
-</head>
-<body>
-    <h1>学習記録ポートフォリオ</h1>
+{% extends 'learning_logs/base.html' %}
 
-    <div class="chart-container">
-        <div class="chart-box">
-            <h3>直近1週間の学習推移</h3>
-            <canvas id="barChart"></canvas>
-        </div>
-        <div class="chart-box">
-            <h3>今日の学習バランス</h3>
-            <canvas id="pieChart"></canvas>
-            {% if not pie_data %}
-                <p>今日の記録はまだありません</p>
-            {% endif %}
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg- d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📊 学習ダッシュボード</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-center text-muted">直近1週間の推移</h6>
+                        <canvas id="barChart"></canvas>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <h6 class="text-center text-muted">今日のバランス</h6>
+                        <canvas id="pieChart"></canvas>
+                        {% if not pie_data %}
+                            <p class="text-center mt-3 small text-muted">今日の記録はまだありません</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <hr>
+    <div class="col-md-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">📝 最近の記録</h5>
+                <a href="{% url 'learning_logs:new_log' %}" class="btn btn-primary btn-sm">
+                    + 記録を追加
+                </a>
+            </div>
+            <ul class="list-group list-group-flush">
+                {% for log in logs %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">{{ log.date|date:"m/d" }}</small>
+                            <span class="badge bg-secondary">{{ log.category }}</span>
+                        </div>
+                        <div class="mt-1">
+                            {{ log.title }}
+                            <span class="fw-bold text-primary">({{ log.study_time }}分)</span>
+                        </div>
+                    </li>
+                {% empty %}
+                    <li class="list-group-item text-muted">記録がありません</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
 
-    <h2>これまでの記録一覧</h2>
-    <ul>
-        {% for log in logs %}
-            <li>
-                {{ log.date }} - {{ log.title }} （{{ log.study_time }}分）
-                <small>Category: {{ log.category }}</small>
-            </li>
-        {% empty %}
-            <li>まだ記録がありません。</li>
-        {% endfor %}
-    </ul>
+<script>
+    // 棒グラフ
+    var ctxBar = document.getElementById('barChart');
+    var barChart = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+            labels: {{ bar_labels|safe }},
+            datasets: [{
+                label: '学習時間(分)',
+                data: {{ bar_data }},
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true } },
+            plugins: { legend: { display: false } } // 凡例を消してスッキリさせる
+        }
+    });
 
-    <script>
-        // --- 1. 棒グラフの設定 ---
-        var ctxBar = document.getElementById('barChart');
-        var barChart = new Chart(ctxBar, {
-            type: 'bar', // 棒グラフ
-            data: {
-                labels: {{ bar_labels|safe }}, // Pythonから渡された日付
-                datasets: [{
-                    label: '学習時間(分)',
-                    data: {{ bar_data }},      // Pythonから渡された時間
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: { beginAtZero: true } // 0からスタート
-                }
-            }
-        });
-
-        // --- 2. 円グラフの設定 ---
-        // データがある時だけ描画する
-        {% if pie_data %}
-            var ctxPie = document.getElementById('pieChart');
-            var pieChart = new Chart(ctxPie, {
-                type: 'pie', // 円グラフ
-                data: {
-                    labels: {{ pie_labels|safe }}, // Pythonから渡されたカテゴリー
-                    datasets: [{
-                        data: {{ pie_data }},      // Pythonから渡された時間
-                        backgroundColor: [
-                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
-                        ]
-                    }]
-                }
-            });
-        {% endif %}
-    </script>
-</body>
-</html>
+    // 円グラフ
+    {% if pie_data %}
+    var ctxPie = document.getElementById('pieChart');
+    var pieChart = new Chart(ctxPie, {
+        type: 'doughnut', // ★ドーナツ型に変更してモダンに！
+        data: {
+            labels: {{ pie_labels|safe }},
+            datasets: [{
+                data: {{ pie_data }},
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}
