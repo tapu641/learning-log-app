@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>学習記録アプリ</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* 簡易レイアウト用CSS */
+        .chart-container {
+            display: flex; /* 横並びにする */
+            justify-content: space-around;
+            margin-bottom: 50px;
+        }
+        .chart-box {
+            width: 45%; /* グラフの幅 */
+        }
+    </style>
+</head>
+<body>
+    <h1>学習記録ポートフォリオ</h1>
+
+    <div class="chart-container">
+        <div class="chart-box">
+            <h3>直近1週間の学習推移</h3>
+            <canvas id="barChart"></canvas>
+        </div>
+        <div class="chart-box">
+            <h3>今日の学習バランス</h3>
+            <canvas id="pieChart"></canvas>
+            {% if not pie_data %}
+                <p>今日の記録はまだありません</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <hr>
+
+    <h2>これまでの記録一覧</h2>
+    <ul>
+        {% for log in logs %}
+            <li>
+                {{ log.date }} - {{ log.title }} （{{ log.study_time }}分）
+                <small>Category: {{ log.category }}</small>
+            </li>
+        {% empty %}
+            <li>まだ記録がありません。</li>
+        {% endfor %}
+    </ul>
+
+    <script>
+        // --- 1. 棒グラフの設定 ---
+        var ctxBar = document.getElementById('barChart');
+        var barChart = new Chart(ctxBar, {
+            type: 'bar', // 棒グラフ
+            data: {
+                labels: {{ bar_labels|safe }}, // Pythonから渡された日付
+                datasets: [{
+                    label: '学習時間(分)',
+                    data: {{ bar_data }},      // Pythonから渡された時間
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                scales: {
+                    y: { beginAtZero: true } // 0からスタート
+                }
+            }
+        });
+
+        // --- 2. 円グラフの設定 ---
+        // データがある時だけ描画する
+        {% if pie_data %}
+            var ctxPie = document.getElementById('pieChart');
+            var pieChart = new Chart(ctxPie, {
+                type: 'pie', // 円グラフ
+                data: {
+                    labels: {{ pie_labels|safe }}, // Pythonから渡されたカテゴリー
+                    datasets: [{
+                        data: {{ pie_data }},      // Pythonから渡された時間
+                        backgroundColor: [
+                            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'
+                        ]
+                    }]
+                }
+            });
+        {% endif %}
+    </script>
+</body>
+</html>
