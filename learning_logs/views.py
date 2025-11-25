@@ -83,3 +83,17 @@ def edit_log(request, log_id):
 
     context = {'log': log, 'form': form}
     return render(request, 'learning_logs/edit_log.html', context)
+
+def delete_log(request, log_id):
+    """ログを削除する"""
+    # 削除したいデータを取得
+    log = LearningLog.objects.get(id=log_id)
+    
+    if request.method == 'POST':
+        # 「削除実行」ボタンが押されたら、実際に消す
+        log.delete()
+        return redirect('learning_logs:index')
+    
+    # 削除確認ページを表示
+    context = {'log': log}
+    return render(request, 'learning_logs/delete_log.html', context)

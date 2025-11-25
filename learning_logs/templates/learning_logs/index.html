@@ -44,6 +44,9 @@
                             <a href="{% url 'learning_logs:edit_log' log.id %}" class="btn btn-sm btn-outline-success">
                                 編集
                             </a>
+                            <a href="{% url 'learning_logs:delete_log' log.id %}" class="btn btn-sm btn-outline-danger">
+                                削除
+                            </a>
                         </div>
                         <div class="mt-1">
                             {{ log.title }}
