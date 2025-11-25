@@ -1,0 +1,28 @@
+{% extends 'learning_logs/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">🏷️ 新しいカテゴリーの追加</h5>
+            </div>
+            <div class="card-body">
+                <form action="{% url 'learning_logs:new_category' %}" method="post">
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">{{ field.label }}</label>
+                            <input type="text" name="{{ field.name }}" class="form-control" required>
+                        </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-info text-white w-100">追加する</button>
+                </form>
+            </div>
+        </div>
+        <div class="mt-3 text-center">
+            <a href="{% url 'learning_logs:new_log' %}" class="text-decoration-none">← 記録画面に戻る</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

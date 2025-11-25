@@ -12,6 +12,19 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
         <div class="container">
             <a class="navbar-brand" href="{% url 'learning_logs:index' %}">📚 Study Tracker</a>
+            <div class="ms-auto">
+                {% if user.is_authenticated %}
+                    <span class="navbar-text text-white me-3">
+                        こんにちは、{{ user.username }} さん
+                    </span>
+                    <form action="{% url 'users:logout' %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-light">ログアウト</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'users:login' %}" class="btn btn-sm btn-light">ログイン</a>
+                {% endif %}
+            </div>
         </div>
     </nav>
 

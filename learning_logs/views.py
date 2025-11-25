@@ -1,45 +1,47 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import Category, LearningLog
+from .forms import LearningLogForm, CategoryForm
 from django.db.models import Sum
 from django.utils import timezone
 import datetime
-from .models import Category, LearningLog
-from .forms import LearningLogForm
+# ★ログイン必須にするための魔法
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
 
 def index(request):
     """学習ログのトップページを表示する"""
-    # 1. 既存のリスト表示用データ
-    logs = LearningLog.objects.order_by('-date')
+    # ★ログインしていない場合、公開ページとして見せるか、ログイン画面に飛ばすか。
+    # ここでは「ログイン画面に飛ばす」設定にします。
+    if not request.user.is_authenticated:
+        return redirect('users:login')
 
-    # --- グラフ用のデータ作成 ---
-    
-    # 今日の日付を取得
+    # ★自分のデータだけを取得するフィルター (owner=request.user)
+    logs = LearningLog.objects.filter(owner=request.user).order_by('-date')
+
+    # --- グラフ用のデータ作成 (ここも自分のデータだけに限定) ---
     today = timezone.now().date()
-
-    # 【円グラフ用】今日の学習内訳（カテゴリーごと）
-    categories = Category.objects.all()
-    pie_labels = [] # ラベル（Python, 英語など）
-    pie_data = []   # データ（30分, 60分など）
-
+    
+    # 円グラフ（自分のデータで集計）
+    categories = Category.objects.filter()
+    pie_labels = []
+    pie_data = []
     for cat in categories:
-        # そのカテゴリーで、かつ「今日」の合計時間を計算
-        total = LearningLog.objects.filter(category=cat, date=today).aggregate(Sum('study_time'))['study_time__sum']
-        if total: # データがある場合のみリストに追加
+        # filterに owner=request.user を追加
+        total = LearningLog.objects.filter(category=cat, date=today, owner=request.user).aggregate(Sum('study_time'))['study_time__sum']
+        if total:
             pie_labels.append(cat.name)
             pie_data.append(total)
 
-    # 【棒グラフ用】過去7日間の日別学習時間
-    bar_labels = [] # 日付（11/24, 11/25など）
-    bar_data = []   # 合計時間
-
-    for i in range(6, -1, -1): # 6日前から今日(0)までループ
+    # 棒グラフ（自分のデータで集計）
+    bar_labels = []
+    bar_data = []
+    for i in range(6, -1, -1):
         date = today - datetime.timedelta(days=i)
-        # その日の合計時間を計算
-        total = LearningLog.objects.filter(date=date).aggregate(Sum('study_time'))['study_time__sum']
-        
-        bar_labels.append(date.strftime('%m/%d')) # 日付を文字列にする
-        bar_data.append(total if total else 0)    # データがないなら0を入れる
+        # filterに owner=request.user を追加
+        total = LearningLog.objects.filter(date=date, owner=request.user).aggregate(Sum('study_time'))['study_time__sum']
+        bar_labels.append(date.strftime('%m/%d'))
+        bar_data.append(total if total else 0)
 
-    # テンプレートに渡すデータ
     context = {
         'logs': logs,
         'pie_labels': pie_labels,
@@ -47,36 +49,38 @@ def index(request):
         'bar_labels': bar_labels,
         'bar_data': bar_data,
     }
-    
     return render(request, 'learning_logs/index.html', context)
 
+@login_required # ★ログイン必須
 def new_log(request):
     """新しい学習ログを登録する"""
     if request.method != 'POST':
-        # データが送信されていない時は、空のフォームを作る
-        form = LearningLogForm()
+        form = LearningLogForm(user=request.user)
     else:
-        # POSTでデータが届いた時は、中身を処理する
-        form = LearningLogForm(request.POST)
+        form = LearningLogForm(request.user, data=request.POST)
         if form.is_valid():
-            form.save()
-            return redirect('learning_logs:index') # 保存したらトップページに戻る
+            # ★重要: すぐに保存せず(commit=False)、持ち主情報をセットしてから保存する
+            new_log = form.save(commit=False)
+            new_log.owner = request.user
+            new_log.save()
+            return redirect('learning_logs:index')
 
-    # ページを表示する
     context = {'form': form}
     return render(request, 'learning_logs/new_log.html', context)
 
+@login_required
 def edit_log(request, log_id):
     """既存のログを編集する"""
-    # 編集したいデータをIDを使ってデータベースから探してくる
-    log = LearningLog.objects.get(id=log_id)
+    log = get_object_or_404(LearningLog, id=log_id)
+    
+    # ★他人のデータならエラーにする（URL直接入力対策）
+    if log.owner != request.user:
+        raise Http404
 
     if request.method != 'POST':
-        # 初回表示：保存されているデータ(instance=log)が入ったフォームを作る
-        form = LearningLogForm(instance=log)
+        form = LearningLogForm(user=request.user, instance=log)
     else:
-        # 送信時：送られてきたデータで上書き保存する
-        form = LearningLogForm(request.POST, instance=log)
+        form = LearningLogForm(request.user, instance=log, data=request.POST)
         if form.is_valid():
             form.save()
             return redirect('learning_logs:index')
@@ -84,16 +88,35 @@ def edit_log(request, log_id):
     context = {'log': log, 'form': form}
     return render(request, 'learning_logs/edit_log.html', context)
 
+@login_required
 def delete_log(request, log_id):
     """ログを削除する"""
-    # 削除したいデータを取得
-    log = LearningLog.objects.get(id=log_id)
+    log = get_object_or_404(LearningLog, id=log_id)
+    
+    # ★他人のデータならエラーにする
+    if log.owner != request.user:
+        raise Http404
     
     if request.method == 'POST':
-        # 「削除実行」ボタンが押されたら、実際に消す
         log.delete()
         return redirect('learning_logs:index')
     
-    # 削除確認ページを表示
     context = {'log': log}
     return render(request, 'learning_logs/delete_log.html', context)
+
+@login_required
+def new_category(request):
+    """新しいカテゴリーを追加する"""
+    if request.method != 'POST':
+        form = CategoryForm()
+    else:
+        form = CategoryForm(data=request.POST)
+        if form.is_valid():
+            new_cat = form.save(commit=False)
+            new_cat.owner = request.user # 持ち主をセット
+            new_cat.save()
+            # 保存したら、ログの投稿画面に飛ばしてあげると親切
+            return redirect('learning_logs:new_log')
+            
+    context = {'form': form}
+    return render(request, 'learning_logs/new_category.html', context)

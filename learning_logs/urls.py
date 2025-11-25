@@ -9,4 +9,5 @@ urlpatterns = [
     path('new_log/',views.new_log, name='new_log'),
     path('edit_log/<int:log_id>',views.edit_log,name='edit_log'),
     path('delete_log/<int:log_id>/', views.delete_log, name='delete_log'),
+    path('new_category/', views.new_category, name='new_category'),
 ]

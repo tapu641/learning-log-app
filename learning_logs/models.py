@@ -1,10 +1,11 @@
 from django.db import models
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 # 1. カテゴリー（科目）のモデル
 class Category(models.Model):
     name = models.CharField(max_length=100, verbose_name="カテゴリー名")
-    
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
     def __str__(self):
         return self.name
 
@@ -20,6 +21,8 @@ class LearningLog(models.Model):
     
     # 記録した日時（自動入力）
     created_at = models.DateTimeField(auto_now_add=True)
+
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.title} ({self.study_time}分)"

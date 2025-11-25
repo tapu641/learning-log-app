@@ -7,6 +7,11 @@
             <div class="card-header bg-primary text-white">
                 <h5 class="mb-0">✏️ 新しい学習記録</h5>
             </div>
+            <div class="text-end mb-2">
+                <a href="{% url 'learning_logs:new_category' %}" class="small text-decoration-none">
+                    + 新しい科目を作る
+                </a>
+            </div>
             <div class="card-body">
                 <form action="{% url 'learning_logs:new_log' %}" method="post">
                     {% csrf_token %}
